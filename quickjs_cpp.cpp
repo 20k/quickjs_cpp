@@ -1458,8 +1458,6 @@ struct quickjs_tester
 {
     quickjs_tester()
     {
-        printf("Testing quick\n");
-
         js_quickjs::value_context vctx(nullptr, nullptr);
 
         {
@@ -1482,8 +1480,6 @@ struct quickjs_tester
             std::string found = root["dep"];
 
             assert(found == "hello");
-
-            std::cout << "Root dump " << root.to_json() << std::endl;
         }
 
         {
@@ -1503,11 +1499,7 @@ struct quickjs_tester
 
             assert(found_1 == "hellothere");
             assert(found_2 == "test");
-
-            std::cout << "Dumped " << root.to_json() << std::endl;
         }
-
-        printf("hidden 1\n");
 
         {
             js_quickjs::value root(vctx);
@@ -1522,8 +1514,6 @@ struct quickjs_tester
             assert(val == 1234);
         }
 
-        printf("hidden 2\n");
-
         {
             js_quickjs::value root(vctx);
 
@@ -1534,8 +1524,6 @@ struct quickjs_tester
 
             assert(str == "yep");
         }
-
-        printf("hidden 3\n");
 
         {
             js_quickjs::value root(vctx);
@@ -1548,16 +1536,12 @@ struct quickjs_tester
             assert(val == "yes.hello");
         }
 
-        printf("hidden 4\n");
-
         {
             js_quickjs::value root(vctx);
 
             auto val = root.add("hello", js_quickjs::function<empty_func>);
             val.add_hidden("testy", "hellothere");
         }
-
-        printf("call\n");
 
         {
             js_quickjs::value func(vctx);
@@ -1567,8 +1551,6 @@ struct quickjs_tester
 
             assert(success);
         }
-
-        printf("compile\n");
 
         {
             auto [success, res] = js_quickjs::compile(vctx, "1+1", "none");
@@ -1640,20 +1622,12 @@ struct quickjs_tester
         {
             js_quickjs::value glob = js_quickjs::get_global(vctx);
 
-            std::cout << "my global " << glob.to_json() << std::endl;
-
             glob["hi"] = "hello";
 
             assert(glob.has("hi") && ((std::string)glob["hi"]) == "hello");
 
-            std::cout << "New global " << glob.to_json() << std::endl;
-
             assert(glob.has("globalThis"));
         }
-
-        printf("Tested quickjs\n");
-
-        //exit(0);
     }
 };
 
