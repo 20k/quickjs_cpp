@@ -1126,6 +1126,13 @@ nlohmann::json js_quickjs::value::to_nlohmann(int stack_depth)
     return ret;
 }
 
+void js_quickjs::value::from_json(const std::string& str)
+{
+    qstack_manager m(*this);
+
+    val = JS_ParseJSON(ctx, str.c_str(), str.size(), nullptr);
+}
+
 std::string js_quickjs::value::to_json()
 {
     JSValue jval = JS_JSONStringify(ctx, val, JS_UNDEFINED, JS_UNDEFINED);

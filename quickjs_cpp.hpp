@@ -587,6 +587,8 @@ namespace js_quickjs
 
         void pack(){}
         void stringify_parse();
+
+        void from_json(const std::string& in);
         std::string to_json();
         std::string to_error_message();
         nlohmann::json to_nlohmann(int stack_depth = 0);
