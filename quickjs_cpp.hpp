@@ -12,6 +12,8 @@
 
 namespace js_quickjs
 {
+    void throw_exception(JSContext* ctx, JSValue val);
+
     struct value;
 
     struct value_context
@@ -600,7 +602,7 @@ namespace js_quickjs
         return in.val;
     }
 
-    JSValue process_return_value(JSContext* ctx, JSValue in);
+    //JSValue process_return_value(JSContext* ctx, JSValue in);
 
     ///This eats C++ exceptions and converts them into JS exceptions
     template<typename... T>
@@ -621,17 +623,17 @@ namespace js_quickjs
         ///not sure this will work for compiled scripts
         JSValue ret = JS_Call(func.ctx, func.val, glob, nargs, arr);
 
+        if(JS_IsException(ret))
+            throw_exception(func.ctx, ret);
+
         JS_FreeValue(func.ctx, glob);
 
-        bool err = JS_IsError(func.ctx, ret) || JS_IsException(ret);
-
-        JSValue processed = js_quickjs::process_return_value(func.ctx, ret);
-        JS_FreeValue(func.ctx, ret);
+        bool err = JS_IsError(func.ctx, ret);
 
         value rval(*func.vctx);
-        rval = processed;
+        rval = ret;
 
-        JS_FreeValue(func.ctx, processed);
+        JS_FreeValue(func.ctx, ret);
 
         return {!err, rval};
     }

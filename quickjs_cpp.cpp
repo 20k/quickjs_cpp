@@ -1,6 +1,21 @@
 #include "quickjs_cpp.hpp"
 #include <iostream>
 
+#define JS_ATOM_NULL 0
+
+void js_quickjs::throw_exception(JSContext* ctx, JSValue val)
+{
+    JSValue except = JS_GetException(ctx);
+
+    JS_FreeValue(ctx, val);
+    JS_FreeValue(ctx, except);
+
+    //js_quickjs::value(vctx);
+    //value = except;
+
+    throw std::runtime_error("Exception");
+}
+
 ///todo: this seems pretty uh. bad. If the value gets freed, this will be ub everywhere
 uint64_t value_to_key(const js_quickjs::value& root)
 {
@@ -33,8 +48,13 @@ struct heap_stash
     heap_stash(JSContext* global, void* _sandbox)
     {
         sandbox = _sandbox;
-        heap_stash_value = JS_NewObject(global);
+        JSValue test = JS_NewObject(global);
         ctx = global;
+
+        if(JS_IsException(test))
+            js_quickjs::throw_exception(global, test);
+
+        heap_stash_value = test;
     }
 
     ~heap_stash()
@@ -369,7 +389,12 @@ js_quickjs::value::value(js_quickjs::value_context& _vctx)
     vctx = &_vctx;
     ctx = vctx->ctx;
 
-    val = JS_NewObject(ctx);
+    JSValue test = JS_NewObject(ctx);
+
+    if(JS_IsException(test))
+        throw_exception(ctx, test);
+
+    val = test;
     has_value = true;
 }
 
@@ -429,8 +454,13 @@ js_quickjs::value::value(js_quickjs::value_context& _vctx, const js_quickjs::val
     if(!parent.has(key))
         return;
 
+    JSValue test = JS_GetPropertyUint32(ctx, parent_value, key);
+
+    if(JS_IsException(test))
+        throw_exception(ctx, test);
+
     has_value = true;
-    val = JS_GetPropertyUint32(ctx, parent_value, key);
+    val = test;
 }
 
 js_quickjs::value::~value()
@@ -455,6 +485,9 @@ bool js_quickjs::value::has(const char* key) const
         return false;
 
     JSAtom atom = JS_NewAtom(ctx, key);
+
+    if(atom == JS_ATOM_NULL)
+        throw std::runtime_error("Could not allocate atom");
 
     bool has_prop = JS_HasProperty(ctx, val, atom);
 
@@ -486,6 +519,9 @@ bool js_quickjs::value::has(const std::string& key) const
 
     JSAtom atom = JS_NewAtomLen(ctx, key.c_str(), key.size());
 
+    if(atom == JS_ATOM_NULL)
+        throw std::runtime_error("Could not allocate atom");
+
     bool has_prop = JS_HasProperty(ctx, val, atom);
 
     JS_FreeAtom(ctx, atom);
@@ -505,6 +541,9 @@ bool js_quickjs::value::has(int key) const
         return false;
 
     JSAtom atom = JS_NewAtomUInt32(ctx, (uint32_t)key);
+
+    if(atom == JS_ATOM_NULL)
+        throw std::runtime_error("Could not allocate atom");
 
     bool has_prop = JS_HasProperty(ctx, val, atom);
 
@@ -548,6 +587,9 @@ bool js_quickjs::value::del(const std::string& key)
         return false;
 
     JSAtom atom = JS_NewAtomLen(ctx, key.c_str(), key.size());
+
+    if(atom == JS_ATOM_NULL)
+        throw std::runtime_error("Could not allocate atom");
 
     JS_DeleteProperty(ctx, val, atom, 0);
 
@@ -800,8 +842,18 @@ void js_quickjs::args::get(js_quickjs::value_context& vctx, const JSValue& val, 
     {
         JSAtom atom = names[i].atom;
 
+        if(atom == JS_ATOM_NULL)
+            throw std::runtime_error("Likely oom in args::get");
+
         JSValue found = JS_GetProperty(vctx.ctx, val, atom);
+
+        if(JS_IsException(found))
+            js_quickjs::throw_exception(vctx.ctx, found);
+
         JSValue key = JS_AtomToValue(vctx.ctx, atom);
+
+        if(atom == JS_ATOM_NULL)
+            throw std::runtime_error("Null atom in args::get");
 
         js_quickjs::value out_key(vctx);
         js_quickjs::value out_value(vctx);
@@ -831,6 +883,9 @@ void js_quickjs::args::get(js_quickjs::value_context& vctx, const JSValue& val, 
 
     JSValue jslen = JS_GetPropertyStr(vctx.ctx, val, "length");
 
+    if(JS_IsException(jslen))
+        throw_exception(vctx.ctx, jslen);
+
     int32_t len = 0;
     JS_ToInt32(vctx.ctx, &len, jslen);
 
@@ -841,6 +896,9 @@ void js_quickjs::args::get(js_quickjs::value_context& vctx, const JSValue& val, 
     for(int i=0; i < len; i++)
     {
         JSValue found = JS_GetPropertyUint32(vctx.ctx, val, i);
+
+        if(JS_IsException(jslen))
+            throw_exception(vctx.ctx, jslen);
 
         js_quickjs::value next(vctx);
         next = found;
@@ -923,6 +981,9 @@ js_quickjs::value& js_quickjs::value::operator=(std::nullopt_t v)
             atom = JS_NewAtom(ctx, std::get<2>(indices).c_str());
         else
             throw std::runtime_error("Bad indices");
+
+        if(atom == JS_ATOM_NULL)
+            throw std::runtime_error("Could not create atom");
 
         JS_DeleteProperty(ctx, parent_value, atom, 0);
 
@@ -1027,7 +1088,12 @@ void js_quickjs::value::stringify_parse()
 
     JS_FreeValue(ctx, val);
 
-    val = JS_ParseJSON(ctx, json.c_str(), json.size(), nullptr);
+    JSValue test = JS_ParseJSON(ctx, json.c_str(), json.size(), nullptr);
+
+    if(JS_IsException(test))
+        throw_exception(ctx, test);
+
+    val = test;
 }
 
 js_quickjs::value::operator std::string() const
@@ -1116,6 +1182,9 @@ nlohmann::json js_quickjs::value::to_nlohmann(int stack_depth)
 {
     JSValue jval = JS_JSONStringify(ctx, val, JS_UNDEFINED, JS_UNDEFINED);
 
+    if(JS_IsException(jval))
+        throw_exception(ctx, jval);
+
     value sval(*vctx);
     sval = jval;
 
@@ -1136,6 +1205,9 @@ void js_quickjs::value::from_json(const std::string& str)
 std::string js_quickjs::value::to_json()
 {
     JSValue jval = JS_JSONStringify(ctx, val, JS_UNDEFINED, JS_UNDEFINED);
+
+    if(JS_IsException(jval))
+        throw_exception(ctx, jval);
 
     value sval(*vctx);
     sval = jval;
@@ -1280,6 +1352,9 @@ std::pair<js_quickjs::value, js_quickjs::value> js_quickjs::add_getter_setter(js
 
     JSAtom str = JS_NewAtomLen(base.ctx, key.c_str(), key.size());
 
+    if(str == JS_ATOM_NULL)
+        throw std::runtime_error("Null atom in add_getter_setter");
+
     JS_DefinePropertyGetSet(base.ctx, base.val, str, JS_DupValue(base.ctx, vget.val), JS_DupValue(base.ctx, vset.val), 0);
 
     JS_FreeAtom(base.ctx, str);
@@ -1287,11 +1362,14 @@ std::pair<js_quickjs::value, js_quickjs::value> js_quickjs::add_getter_setter(js
     return {vget, vset};
 }
 
+#if 0
 JSValue js_quickjs::process_return_value(JSContext* ctx, JSValue in)
 {
     if(JS_IsException(in))
     {
-        return JS_GetException(ctx);
+        JSValue except = JS_GetException(ctx);
+
+        //return JS_GetException(ctx);
     }
 
     /*JSContext* tctx = nullptr;
@@ -1303,6 +1381,7 @@ JSValue js_quickjs::process_return_value(JSContext* ctx, JSValue in)
 
     return JS_DupValue(ctx, in);
 }
+#endif // 0
 
 js_quickjs::value js_quickjs::execute_promises(js_quickjs::value_context& vctx, js_quickjs::value& potential_promise)
 {
@@ -1358,15 +1437,15 @@ std::pair<bool, js_quickjs::value> js_quickjs::call_compiled(value& bitcode)
 {
     JSValue ret = JS_EvalFunction(bitcode.ctx, JS_DupValue(bitcode.ctx, bitcode.val));
 
-    bool err = JS_IsError(bitcode.ctx, ret) || JS_IsException(ret);
+    if(JS_IsException(ret))
+        throw_exception(bitcode.ctx, ret);
 
-    JSValue processed = js_quickjs::process_return_value(bitcode.ctx, ret);
-    JS_FreeValue(bitcode.ctx, ret);
+    bool err = JS_IsError(bitcode.ctx, ret);
 
     value rval(*bitcode.vctx);
-    rval = processed;
+    rval = ret;
 
-    JS_FreeValue(bitcode.ctx, processed);
+    JS_FreeValue(bitcode.ctx, ret);
 
     return {!err, rval};
 }
@@ -1380,22 +1459,15 @@ std::pair<bool, js_quickjs::value> js_quickjs::compile(value_context& vctx, cons
 {
     JSValue ret = JS_Eval(vctx.ctx, data.c_str(), data.size(), name.c_str(), JS_EVAL_FLAG_COMPILE_ONLY | JS_EVAL_FLAG_STRIP);
 
+    if(JS_IsException(ret))
+        throw_exception(vctx.ctx, ret);
+
     js_quickjs::value val(vctx);
     val = ret;
 
     JS_FreeValue(vctx.ctx, ret);
 
-    bool err = JS_IsException(val.val) || JS_IsError(vctx.ctx, val.val);
-
-    if(JS_IsException(val.val))
-    {
-        JSValue err_val = JS_GetException(vctx.ctx);
-
-        val = err_val;
-
-        JS_FreeValue(vctx.ctx, err_val);
-    }
-
+    bool err = JS_IsError(vctx.ctx, val.val);
     return {!err, val};
 }
 
@@ -1414,13 +1486,13 @@ value eval(value_context& vctx, const std::string& data)
 {
     JSValue ret = JS_Eval(vctx.ctx, data.c_str(), data.size(), "test-eval", 0);
 
-    JSValue processed = js_quickjs::process_return_value(vctx.ctx, ret);
-    JS_FreeValue(vctx.ctx, ret);
+    if(JS_IsException(ret))
+        throw_exception(vctx.ctx, ret);
 
     value rval(vctx);
-    rval = processed;
+    rval = ret;
 
-    JS_FreeValue(vctx.ctx, processed);
+    JS_FreeValue(vctx.ctx, ret);
 
     return rval;
 }
