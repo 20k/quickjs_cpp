@@ -846,6 +846,8 @@ namespace js_quickjs
 
     std::string dump_function(value& val);
     value eval(value_context& vctx, const std::string& data, const std::string& name = "test-eval");
+    value eval_module(value_context& vctx, const std::string& data, const std::string& name = "test-eval");
+    value compile_module(value_context& vctx, const std::string& data, const std::string& name = "test-eval");
     value xfer_between_contexts(value_context& destination, const value& val);
 
     value make_proxy(value& target, value& handle);

@@ -1511,6 +1511,36 @@ value eval(value_context& vctx, const std::string& data, const std::string& name
     return rval;
 }
 
+value eval_module(value_context& vctx, const std::string& data, const std::string& name)
+{
+    JSValue ret = JS_Eval(vctx.ctx, data.c_str(), data.size(), name.c_str(), JS_EVAL_TYPE_MODULE);
+
+    if(JS_IsException(ret))
+        throw_exception(vctx.ctx, ret, name);
+
+    value rval(vctx);
+    rval = ret;
+
+    JS_FreeValue(vctx.ctx, ret);
+
+    return rval;
+}
+
+value compile_module(value_context& vctx, const std::string& data, const std::string& name)
+{
+    JSValue ret = JS_Eval(vctx.ctx, data.c_str(), data.size(), name.c_str(), JS_EVAL_TYPE_MODULE | JS_EVAL_FLAG_COMPILE_ONLY);
+
+    if(JS_IsException(ret))
+        throw_exception(vctx.ctx, ret, name);
+
+    value rval(vctx);
+    rval = ret;
+
+    JS_FreeValue(vctx.ctx, ret);
+
+    return rval;
+}
+
 value xfer_between_contexts(value_context& destination, const value& val)
 {
     value next(destination);
