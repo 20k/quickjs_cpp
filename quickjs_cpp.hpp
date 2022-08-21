@@ -623,10 +623,10 @@ namespace js_quickjs
         ///not sure this will work for compiled scripts
         JSValue ret = JS_Call(func.ctx, func.val, glob, nargs, arr);
 
+        JS_FreeValue(func.ctx, glob);
+
         if(JS_IsException(ret))
             throw_exception(func.ctx, ret);
-
-        JS_FreeValue(func.ctx, glob);
 
         bool err = JS_IsError(func.ctx, ret);
 
