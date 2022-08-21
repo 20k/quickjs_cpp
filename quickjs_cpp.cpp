@@ -1496,9 +1496,9 @@ std::string dump_function(value& val)
     return std::string(out, out + size);
 }
 
-value eval(value_context& vctx, const std::string& data)
+value eval(value_context& vctx, const std::string& data, const std::string& name)
 {
-    JSValue ret = JS_Eval(vctx.ctx, data.c_str(), data.size(), "test-eval", 0);
+    JSValue ret = JS_Eval(vctx.ctx, data.c_str(), data.size(), name.c_str(), 0);
 
     if(JS_IsException(ret))
         throw_exception(vctx.ctx, ret);

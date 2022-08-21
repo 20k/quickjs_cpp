@@ -845,7 +845,7 @@ namespace js_quickjs
     std::pair<bool, value> compile(value_context& vctx, const std::string& data, const std::string& name);
 
     std::string dump_function(value& val);
-    value eval(value_context& vctx, const std::string& data);
+    value eval(value_context& vctx, const std::string& data, const std::string& name = "test-eval");
     value xfer_between_contexts(value_context& destination, const value& val);
 
     value make_proxy(value& target, value& handle);
