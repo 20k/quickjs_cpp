@@ -3,17 +3,31 @@
 
 #define JS_ATOM_NULL 0
 
+static uint32_t memory_limit = 1024 * 1024 * 4;
+
 void js_quickjs::throw_exception(JSContext* ctx, JSValue val)
 {
+    JS_SetMemoryLimit(JS_GetRuntime(ctx), -1);
+
     JSValue except = JS_GetException(ctx);
 
+    std::string err;
+
+    {
+        js_quickjs::value_context vctx(ctx);
+
+        js_quickjs::value v(vctx);
+        v.val = except;
+
+        err = v.to_error_message();
+    }
+
     JS_FreeValue(ctx, val);
-    JS_FreeValue(ctx, except);
+    //JS_FreeValue(ctx, except);
 
-    //js_quickjs::value(vctx);
-    //value = except;
+    JS_SetMemoryLimit(JS_GetRuntime(ctx), memory_limit);
 
-    throw std::runtime_error("Exception");
+    throw std::runtime_error("Exception: " + err);
 }
 
 ///todo: this seems pretty uh. bad. If the value gets freed, this will be ub everywhere
@@ -278,7 +292,7 @@ js_quickjs::value_context::value_context(JSInterruptHandler interrupt, void* san
     heap = JS_NewRuntime();
     ctx = JS_NewContext(heap);
 
-    JS_SetMemoryLimit(heap, 1024*1024*4);
+    JS_SetMemoryLimit(heap, memory_limit);
 
     init_heap(ctx, interrupt, sandbox);
 
