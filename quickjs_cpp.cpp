@@ -5,7 +5,7 @@
 
 static uint32_t memory_limit = 1024 * 1024 * 4;
 
-void js_quickjs::throw_exception(JSContext* ctx, JSValue val)
+void js_quickjs::throw_exception(JSContext* ctx, JSValue val, const std::string& data)
 {
     JS_SetMemoryLimit(JS_GetRuntime(ctx), -1);
 
@@ -27,7 +27,7 @@ void js_quickjs::throw_exception(JSContext* ctx, JSValue val)
 
     JS_SetMemoryLimit(JS_GetRuntime(ctx), memory_limit);
 
-    throw std::runtime_error("Exception: " + err);
+    throw std::runtime_error("Exception (" + data + "): " + err);
 }
 
 ///todo: this seems pretty uh. bad. If the value gets freed, this will be ub everywhere
@@ -1501,7 +1501,7 @@ value eval(value_context& vctx, const std::string& data, const std::string& name
     JSValue ret = JS_Eval(vctx.ctx, data.c_str(), data.size(), name.c_str(), 0);
 
     if(JS_IsException(ret))
-        throw_exception(vctx.ctx, ret);
+        throw_exception(vctx.ctx, ret, name);
 
     value rval(vctx);
     rval = ret;

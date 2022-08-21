@@ -12,7 +12,7 @@
 
 namespace js_quickjs
 {
-    void throw_exception(JSContext* ctx, JSValue val);
+    void throw_exception(JSContext* ctx, JSValue val, const std::string& data = "");
 
     struct value;
 
